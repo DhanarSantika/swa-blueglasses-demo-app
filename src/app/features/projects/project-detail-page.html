@@ -1,0 +1,38 @@
+<div class="project-detail-page">
+  @if (context.loading()) {
+    <p class="loading-state" role="status">Memuat proyek…</p>
+  } @else if (context.project(); as project) {
+    <app-page-header eyebrow="Workspace project" [title]="project.name" [description]="project.code + ' · ' + customerName()">
+      <app-status-badge page-actions [tone]="statusTone(project.status)">{{ project.status }}</app-status-badge>
+      <a page-actions class="button secondary" routerLink="/sikap/projects">Kembali ke daftar</a>
+    </app-page-header>
+
+    @if (context.error()) { <app-alert tone="error">{{ context.error() }}</app-alert> }
+
+    <section class="panel project-detail" aria-label="Detail proyek">
+      <nav class="project-detail-tabs" aria-label="Halaman proyek">
+        <a [routerLink]="['/sikap/projects', project.id]" routerLinkActive="selected" [routerLinkActiveOptions]="{ exact: true }">Ringkasan &amp; pengaturan</a>
+        <a [routerLink]="['/sikap/projects', project.id, 'receipts']" routerLinkActive="selected">Penerimaan</a>
+        <a [routerLink]="['/sikap/projects', project.id, 'expenses']" routerLinkActive="selected">Biaya &amp; tagihan</a>
+        <a [routerLink]="['/sikap/projects', project.id, 'documents']" routerLinkActive="selected">Dokumen</a>
+      </nav>
+
+      @if (context.summary(); as summary) {
+        <section class="project-overview" aria-label="Ringkasan keuangan proyek">
+          <article><span>Nilai kontrak</span><strong>{{ project.contractValue === null ? 'Belum diisi' : (project.contractValue | number:'1.2-2') + ' IDR' }}</strong></article>
+          <article><span>Baseline budget</span><strong>{{ summary.baselineAvailable === true ? (summary.baselineBudgetTotal | number:'1.2-2') + ' IDR' : 'Belum tersedia' }}</strong></article>
+          <article><span>Budget terbaru</span><strong>{{ summary.latestBudgetTotal | number:'1.2-2' }} IDR</strong></article>
+          <article><span>Biaya proyek tercatat</span><strong>{{ summary.incurredExpenseTotal | number:'1.2-2' }} IDR</strong></article>
+          <article><span>Piutang</span><strong>{{ summary.balances.receivable | number:'1.2-2' }} IDR</strong></article>
+          <article><span>Utang</span><strong>{{ summary.balances.payable | number:'1.2-2' }} IDR</strong></article>
+          <article><span>Belum dialokasikan</span><strong>{{ (summary.balances.unallocatedReceipts + summary.balances.unallocatedPayments) | number:'1.2-2' }} IDR</strong></article>
+        </section>
+      }
+
+      <router-outlet />
+    </section>
+  } @else if (context.error()) {
+    <app-alert tone="error">{{ context.error() }}</app-alert>
+    <a class="button secondary" routerLink="/sikap/projects">Kembali ke daftar</a>
+  }
+</div>

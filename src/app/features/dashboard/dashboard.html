@@ -1,0 +1,43 @@
+<div class="dashboard-page">
+  <app-page-header eyebrow="Workspace SIKAP" title="Ringkasan" description="Kinerja keuangan bulan ini dan posisi project terkini."><a page-actions class="button secondary" routerLink="/sikap/reports">Buka laporan</a></app-page-header>
+  @if (loading()) { <section class="panel empty-state" aria-live="polite">Memuat ringkasan…</section> }
+  @if (error()) { <app-alert tone="error">{{ error() }}</app-alert> }
+  @if (dashboard(); as data) {
+    <p class="period-label">Periode transaksi: {{ data.period.from }} – {{ data.period.to }} · Saldo posisi terkini</p>
+    <app-panel class="owner-attention" eyebrow="Tindakan owner" title="Perlu perhatian" [ariaLabel]="'Perlu perhatian'">
+      @if (data.dueSoon.overdueTerms.length || data.dueSoon.overdueBills.length || hasProjectWarnings()) {
+        <ul class="attention-list">
+          @for (term of data.dueSoon.overdueTerms; track term.id) { <li><a [routerLink]="['/sikap/projects', term.projectId, 'receipts']"><strong>{{ projectName(term.projectId) }}</strong><span>Termin {{ term.name }} · lewat jatuh tempo {{ term.dueDate }}</span></a><strong>{{ currency(term.outstanding) }}</strong></li> }
+          @for (bill of data.dueSoon.overdueBills; track bill.id) { <li><a [routerLink]="bill.projectId ? ['/sikap/projects', bill.projectId, 'expenses'] : ['/sikap/finance/overhead']"><strong>{{ projectName(bill.projectId) }}</strong><span>Tagihan terlambat · {{ bill.dueDate }}</span></a><strong>{{ currency(bill.outstanding) }}</strong></li> }
+          @for (project of data.projects; track project.id) { @if (project.overBudget || project.unbudgeted) { <li><a [routerLink]="['/sikap/projects', project.id]"><strong>{{ project.code }} · {{ project.name }}</strong><span>{{ project.overBudget ? 'Melebihi baseline budget' : 'Biaya belum memiliki budget' }}</span></a><span class="warning-chip">Periksa proyek</span></li> } }
+        </ul>
+      } @else { <app-empty-state message="Tidak ada tagihan terlambat atau proyek dengan peringatan budget." /> }
+    </app-panel>
+    <section class="metric-grid" aria-label="Ringkasan bulan ini">
+      <app-metric-card label="Cash inflow" detail="Bulan berjalan">{{ currency(data.month.cashInflow) }}</app-metric-card>
+      <app-metric-card label="Cash outflow" detail="Termasuk refund customer">{{ currency(data.month.cashOutflow) }}</app-metric-card>
+      <app-metric-card label="Incurred expense" detail="Berdasarkan tanggal invoice">{{ currency(data.month.incurredExpense) }}</app-metric-card>
+      <app-metric-card label="Cash surplus" detail="Bulan berjalan">{{ currency(data.month.cashSurplus) }}</app-metric-card>
+    </section>
+    <section class="metric-grid position-grid" aria-label="Posisi perusahaan terkini">
+      <app-metric-card label="Nilai kontrak berjalan" detail="Proyek operasional">{{ currency(data.current.activeContractValue) }}</app-metric-card>
+      <app-metric-card label="Piutang customer" detail="Sisa seluruh termin">{{ currency(data.current.receivable) }}</app-metric-card>
+      <app-metric-card label="Utang tagihan" detail="Sisa seluruh tagihan">{{ currency(data.current.payable) }}</app-metric-card>
+      <app-metric-card label="Company Overhead" detail="Total biaya operasional tercatat">{{ currency(data.current.companyOverhead) }}</app-metric-card>
+    </section>
+    <section class="dashboard-columns">
+      <article class="panel"><div class="section-heading"><div><p class="eyebrow">Project operasional</p><h2>Budget dan realisasi</h2></div></div>
+        <div class="table-scroll"><table><thead><tr><th>Project</th><th>Status</th><th>Baseline</th><th>Budget terbaru</th><th>Incurred</th><th>Perhatian</th></tr></thead><tbody>
+          @for (project of data.projects; track project.id) { <tr><td><a [routerLink]="['/sikap/projects', project.id]"><strong>{{ project.code }}</strong><small>{{ project.name }}</small></a></td><td>{{ project.status }}</td><td>{{ project.initialBaselineAvailable === true ? currency(project.baseline) : 'Belum tersedia' }}</td><td>{{ currency(project.latestBudget) }}</td><td>{{ currency(project.incurredExpense) }}</td><td>@if (project.overBudget) { <span class="warning-chip">Over budget</span> } @if (project.unbudgeted) { <span class="warning-chip">Unbudgeted</span> } @if (!project.overBudget && !project.unbudgeted) { — }</td></tr> }
+          @if (!data.projects.length) { <tr><td colspan="6" class="empty-state">Belum ada project operasional.</td></tr> }
+        </tbody></table></div>
+      </article>
+      <article class="panel"><div class="section-heading"><div><p class="eyebrow">Perhatian</p><h2>Jatuh tempo 14 hari</h2></div></div>
+          <h3>Termin</h3>@if (data.dueSoon.terms.length) { <ul class="attention-list">@for (term of data.dueSoon.terms; track term.id) { <li><a [routerLink]="['/sikap/projects', term.projectId, 'receipts']">{{ projectName(term.projectId) }} · {{ term.name }} · {{ term.dueDate }}</a><strong>{{ currency(term.outstanding) }}</strong></li> }</ul> } @else { <app-empty-state message="Tidak ada termin jatuh tempo." /> }
+          <h3>Tagihan</h3>@if (data.dueSoon.bills.length) { <ul class="attention-list">@for (bill of data.dueSoon.bills; track bill.id) { <li><a [routerLink]="bill.projectId ? ['/sikap/projects', bill.projectId, 'expenses'] : ['/sikap/finance/overhead']">{{ projectName(bill.projectId) }} · {{ bill.kind }} · {{ bill.dueDate }}</a><strong>{{ currency(bill.outstanding) }}</strong></li> }</ul> } @else { <app-empty-state message="Tidak ada tagihan jatuh tempo." /> }
+          <h3>Overdue</h3>@if (data.dueSoon.overdueTerms.length || data.dueSoon.overdueBills.length) { <ul class="attention-list">@for (term of data.dueSoon.overdueTerms; track term.id) { <li><a [routerLink]="['/sikap/projects', term.projectId, 'receipts']">{{ projectName(term.projectId) }} · Termin {{ term.name }} · {{ term.dueDate }}</a><strong>{{ currency(term.outstanding) }}</strong></li> } @for (bill of data.dueSoon.overdueBills; track bill.id) { <li><a [routerLink]="bill.projectId ? ['/sikap/projects', bill.projectId, 'expenses'] : ['/sikap/finance/overhead']">{{ projectName(bill.projectId) }} · {{ bill.kind }} · {{ bill.dueDate }}</a><strong>{{ currency(bill.outstanding) }}</strong></li> }</ul> } @else { <app-empty-state message="Tidak ada saldo overdue." /> }
+        <p class="form-hint">Saldo belum dialokasikan: penerimaan {{ currency(data.unallocated.receipts) }} · pembayaran {{ currency(data.unallocated.payments) }} · unknown payment {{ currency(data.current.unknownPaymentBalance) }}</p>
+      </article>
+    </section>
+  }
+</div>

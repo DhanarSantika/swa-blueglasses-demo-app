@@ -1,0 +1,143 @@
+<div class="projects-page">
+  @if (!detailRoute() || showCreate()) {
+    <app-page-header eyebrow="Workspace project" [title]="showCreate() ? 'Project baru' : 'Proyek'" description="Pantau proyek dan kondisi keuangannya.">
+      @if (showCreate()) { <a page-actions class="button secondary" routerLink="/sikap/projects">Kembali ke daftar</a> }
+      @else { <a page-actions class="button primary" routerLink="/sikap/projects/new">＋ Buat proyek</a> }
+    </app-page-header>
+  }
+
+  @if (notice()) { <app-alert tone="success">{{ notice() }}</app-alert> }
+  @if (error()) { <app-alert tone="error">{{ error() }}</app-alert> }
+
+  @if (showCreate()) {
+    <section class="panel editor" aria-labelledby="create-project-title">
+      <div class="section-heading"><div><p class="eyebrow">Project baru</p><h2 id="create-project-title">Buat Project Draft</h2></div></div>
+      <form [formGroup]="createForm" (ngSubmit)="create()">
+        <div class="form-grid">
+          <div class="field"><label for="new-project-code">Nomor project</label><input id="new-project-code" formControlName="code" maxlength="50" required></div>
+          <div class="field"><label for="new-project-name">Nama project</label><input id="new-project-name" formControlName="name" maxlength="200" required></div>
+          <div class="field"><label for="new-project-customer">Customer</label><select id="new-project-customer" formControlName="customerId" required><option value="">Pilih customer aktif</option>@for (customer of customers(); track customer.id) { @if (customer.isActive) { <option [value]="customer.id">{{ customer.name }}</option> } }</select></div>
+          <div class="field"><label for="new-project-value">Nilai kontrak (opsional)</label><input id="new-project-value" type="number" min="0" step="0.01" formControlName="contractValue"></div>
+        </div>
+        <div class="form-actions"><button class="button primary" type="submit" [disabled]="busy()">Simpan sebagai Draft</button></div>
+      </form>
+    </section>
+  }
+
+  @if (!detailRoute()) { <section class="panel project-list" [attr.aria-busy]="loading()">
+    <div class="section-heading"><div><h2>Semua proyek</h2></div><span class="count-chip">{{ visibleProjects().length }} proyek</span></div>
+    <div class="project-filters"><label class="field"><span>Cari proyek atau customer</span><input type="search" [value]="search()" (input)="search.set($any($event.target).value)" placeholder="Nomor, nama proyek, customer"></label><label class="field"><span>Status</span><select [value]="statusFilter()" (change)="statusFilter.set($any($event.target).value)"><option value="">Semua status</option><option>Draft</option><option>Active</option><option>InProgress</option><option>OnHold</option><option>Completed</option><option>Closed</option><option>Cancelled</option></select></label></div>
+    @if (loading()) { <p class="list-state" role="status">Memuat project…</p> }
+    @else if (!projects().length) { <p class="list-state">Belum ada project. Buat project setelah tender dimenangkan.</p> }
+    @else {
+      <div class="table-scroll"><table><caption class="visually-hidden">Daftar project</caption><thead><tr><th>Nomor</th><th>Nama project</th><th>Customer</th><th>Status</th><th>Start date</th><th>Nilai kontrak</th><th>Tindakan</th></tr></thead>
+        <tbody>@for (project of visibleProjects(); track project.id) {
+          <tr><td>{{ project.code }}</td><td>{{ project.name }}</td><td>{{ customerName(project.customerId) }}</td><td><app-status-badge [tone]="project.status === 'Completed' || project.status === 'Closed' ? 'success' : project.status === 'Cancelled' ? 'danger' : project.status === 'OnHold' ? 'warning' : 'info'">{{ project.status }}</app-status-badge></td><td>{{ project.startDate || '—' }}</td><td>{{ project.contractValue === null ? 'Belum diisi' : (project.contractValue | number:'1.2-2') }}</td><td><a class="button secondary small" [routerLink]="['/sikap/projects', project.id]">Buka</a></td></tr>
+        } @empty { <tr><td colspan="7" class="list-state">Tidak ada proyek yang cocok dengan pencarian.</td></tr> }</tbody>
+      </table></div>
+    }
+  </section> }
+
+  @if (selected(); as project) {
+    <section class="project-settings">
+      @if (project.status === 'Draft') {
+        <form [formGroup]="draftForm" (ngSubmit)="saveDraftDetails()" class="detail-section">
+          <h3>Data umum</h3>
+          <div class="form-grid"><div class="field"><label for="draft-project-code">Nomor project</label><input id="draft-project-code" [value]="project.code" readonly></div><div class="field"><label for="draft-project-name">Nama project</label><input id="draft-project-name" formControlName="name" maxlength="200" required></div><div class="field"><label for="draft-project-customer">Customer</label><select id="draft-project-customer" formControlName="customerId" required>@for (customer of customers(); track customer.id) { @if (customer.isActive || customer.id === project.customerId) { <option [value]="customer.id" [disabled]="!customer.isActive">{{ customer.name }}</option> } }</select></div></div>
+          <div class="form-actions"><button class="button secondary" type="submit" [disabled]="busy()">Simpan data umum</button></div>
+        </form>
+      }
+
+      <details class="detail-disclosure"><summary>Kontrak dan jadwal termin</summary><form [formGroup]="contractForm" (ngSubmit)="saveContract()" class="detail-section">
+        <h3>Data kontrak dan jadwal</h3>
+        <div class="form-grid">
+          <div class="field"><label for="project-contract-value">Nilai kontrak (IDR)</label><input id="project-contract-value" type="number" min="0.01" step="0.01" formControlName="contractValue" [readonly]="project.status !== 'Draft'"></div>
+          <div class="field"><label for="project-contract-date">Tanggal kontrak (opsional)</label><input id="project-contract-date" type="date" formControlName="contractDate" [readonly]="project.status !== 'Draft'"></div>
+          <div class="field"><label for="project-contract-number">Nomor kontrak/PO (opsional)</label><input id="project-contract-number" formControlName="contractNumber" maxlength="100" [readonly]="project.status !== 'Draft'"></div>
+          <div class="field"><label for="project-start-date">Start date</label><input id="project-start-date" type="date" formControlName="startDate" [readonly]="!['Draft','Active','InProgress','OnHold','Completed'].includes(project.status)"></div>
+          <div class="field"><label for="project-estimated-date">Estimated completion (opsional)</label><input id="project-estimated-date" type="date" formControlName="estimatedCompletionDate" [readonly]="project.status !== 'Draft'"></div>
+        </div>
+        @if (project.status !== 'Draft' && ['Active','InProgress','OnHold','Completed'].includes(project.status)) {
+          <div class="field reason"><label for="project-start-reason">Alasan perubahan start date</label><input id="project-start-reason" formControlName="reason" required [readonly]="!isOwner()"></div>
+        }
+        @if (project.status === 'Draft' || (isOwner() && ['Active','InProgress','OnHold','Completed'].includes(project.status))) {
+          <div class="form-actions"><button class="button secondary" type="submit" [disabled]="busy()">{{ project.status === 'Draft' ? 'Simpan data kontrak' : 'Simpan start date' }}</button></div>
+        }
+      </form>
+
+      <form [formGroup]="termForm" (ngSubmit)="saveTerms()" class="detail-section">
+        <div class="section-heading"><h3>Payment schedule</h3>@if (project.status === 'Draft' || (isOwner() && !['Closed','Cancelled'].includes(project.status))) { <button class="button secondary small" type="button" (click)="addTerm()">＋ Termin</button> }</div>
+        <div formArrayName="terms" class="planning-rows">@for (row of terms.controls; track row; let i = $index) {
+          <div class="planning-row" [formGroupName]="i"><input type="hidden" formControlName="id"><div class="field"><label [for]="'project-term-name-' + i">Nama termin</label><input [id]="'project-term-name-' + i" formControlName="name" maxlength="150" [readonly]="!canEditTerms(project) || row.get('isCancelled')?.value"><small>{{ paymentTerms()[i]?.status }} · dialokasikan {{ (paymentTerms()[i]?.allocatedAmount ?? 0) | number:'1.2-2' }} · sisa {{ (paymentTerms()[i]?.outstandingAmount ?? paymentTerms()[i]?.amount ?? 0) | number:'1.2-2' }} IDR</small></div><div class="field"><label [for]="'project-term-amount-' + i">Nominal (IDR)</label><input [id]="'project-term-amount-' + i" type="number" min="0.01" step="0.01" formControlName="amount" [readonly]="!canEditTerms(project) || row.get('isCancelled')?.value"></div><div class="field"><label [for]="'project-term-date-' + i">Due date</label><input [id]="'project-term-date-' + i" type="date" formControlName="dueDate" [readonly]="!canEditTerms(project) || row.get('isCancelled')?.value"></div>@if (project.status !== 'Draft' && isOwner() && !row.get('isCancelled')?.value) { <label class="term-cancel-control"><input type="checkbox" formControlName="isCancelled" [disabled]="(paymentTerms()[i]?.allocatedAmount ?? 0) > 0"> Batalkan termin</label> }@else { <input type="hidden" formControlName="isCancelled"> }<button class="button secondary small" type="button" [disabled]="project.status !== 'Draft'" (click)="removeTerm(i)" aria-label="Hapus termin">Hapus</button></div>
+        }</div>
+        <p class="form-hint">Total {{ plannedTotal() | number:'1.2-2' }} / {{ contractTotal() | number:'1.2-2' }} IDR. Total wajib sama dengan contract value saat aktivasi.</p>
+        @if (project.status !== 'Draft' && canEditTerms(project)) { <div class="field reason"><label for="project-term-reason">Alasan perubahan termin</label><input id="project-term-reason" formControlName="reason" required></div> }
+        @if (canEditTerms(project)) { <div class="form-actions"><button class="button secondary" type="submit" [disabled]="busy()">Simpan payment schedule</button></div> }
+      </form></details>
+
+      <details class="detail-disclosure"><summary>Budget proyek</summary><form [formGroup]="budgetForm" (ngSubmit)="saveBudget()" class="detail-section">
+        <div class="section-heading"><div><h3>Budget project</h3>@if (baselineAvailable() === false) { <p class="form-hint">Baseline awal belum tersedia saat aktivasi.</p> }</div>@if (canEditBudget(project)) { <button class="button secondary small" type="button" (click)="addBudgetLine()">＋ Baris budget</button> }</div>
+        <div formArrayName="lines" class="planning-rows">@for (row of budgetLines.controls; track row; let i = $index) {
+          <div class="planning-row budget-row" [formGroupName]="i"><div class="field"><label [for]="'project-budget-category-' + i">Kategori project</label><select [id]="'project-budget-category-' + i" formControlName="categoryId" [disabled]="!canEditBudget(project)"><option value="">Pilih kategori</option>@for (category of categoriesForBudget(); track category.id) { <option [value]="category.id">{{ category.name }}</option> }</select></div><div class="field"><label [for]="'project-budget-subcategory-' + i">Subkategori</label><select [id]="'project-budget-subcategory-' + i" formControlName="subcategoryId" [disabled]="!canEditBudget(project)"><option value="">Pilih subkategori</option>@for (subcategory of subcategoriesFor(row.get('categoryId')?.value); track subcategory.id) { <option [value]="subcategory.id">{{ subcategory.name }}</option> }</select></div><div class="field"><label [for]="'project-budget-amount-' + i">Nominal (IDR)</label><input [id]="'project-budget-amount-' + i" type="number" min="0.01" step="0.01" formControlName="amount" [readonly]="!canEditBudget(project)"></div><div class="field"><label [for]="'project-budget-description-' + i">Deskripsi (opsional)</label><input [id]="'project-budget-description-' + i" formControlName="description" maxlength="500" [readonly]="!canEditBudget(project)"></div><button class="button secondary small" type="button" [disabled]="!canEditBudget(project)" (click)="removeBudgetLine(i)" aria-label="Hapus budget">Hapus</button></div>
+        }</div>
+        @if (project.status !== 'Draft' && canEditBudget(project)) { <div class="field reason"><label for="project-budget-reason">Alasan revisi budget</label><input id="project-budget-reason" formControlName="reason" required></div> }
+        @if (canEditBudget(project)) { <div class="form-actions"><button class="button secondary" type="submit" [disabled]="busy()">Simpan budget</button></div> }
+      </form></details>
+
+      <details class="detail-disclosure"><summary>Lifecycle dan penutupan proyek</summary><section class="detail-section lifecycle" aria-labelledby="lifecycle-title">
+        <div [formGroup]="lifecycleForm">
+        <h3 id="lifecycle-title">Lifecycle project</h3>
+        @if (balances(); as balance) {
+          <dl class="balance-grid"><div><dt>Outstanding receivable</dt><dd>{{ balance.receivable | number:'1.2-2' }} IDR</dd></div><div><dt>Outstanding payable</dt><dd>{{ balance.payable | number:'1.2-2' }} IDR</dd></div><div><dt>Penerimaan belum dialokasikan</dt><dd>{{ balance.unallocatedReceipts | number:'1.2-2' }} IDR</dd></div><div><dt>Pembayaran belum dialokasikan</dt><dd>{{ balance.unallocatedPayments | number:'1.2-2' }} IDR</dd></div></dl>
+        }
+        @if (project.status === 'Draft') {
+          <p>Project Draft belum menerima transaksi. Lengkapi kontrak, start date, dan payment schedule sebelum aktivasi.</p>
+          @if (isOwner()) { <button class="button primary" type="button" [disabled]="busy()" (click)="activate()">Aktifkan project</button> }
+        } @else if (project.status === 'Active' && isOwner()) {
+          @if (isBeforeStartDate(project)) { <p>Start date belum tiba. OWNER dapat mengubah start date sebelum memulai pekerjaan.</p> }
+          <button class="button primary" type="button" [disabled]="busy() || isBeforeStartDate(project)" (click)="transition('Start')">Mulai pekerjaan</button>
+        } @else if (project.status === 'InProgress' && isOwner()) {
+          <div class="lifecycle-actions"><div class="field"><label for="lifecycle-reason">Alasan (wajib untuk On Hold)</label><input id="lifecycle-reason" formControlName="reason"></div><button class="button secondary" type="button" [disabled]="busy()" (click)="transition('Hold')">On Hold</button></div>
+          <div class="completion-grid"><div class="field"><label for="actual-completion-date">Actual completion date</label><input id="actual-completion-date" type="date" formControlName="actualCompletionDate"></div><div class="field"><label for="bast-number">Nomor BAST (opsional)</label><input id="bast-number" formControlName="bastNumber" maxlength="100"></div><div class="field"><label for="bast-date">Tanggal BAST (opsional)</label><input id="bast-date" type="date" formControlName="bastDate"></div><button class="button primary" type="button" [disabled]="busy()" (click)="transition('Complete')">Tandai Completed</button></div>
+        } @else if (project.status === 'OnHold' && isOwner()) {
+          <p>Project sedang On Hold. Lanjutkan pekerjaan untuk mengubahnya kembali ke In Progress.</p><button class="button primary" type="button" [disabled]="busy()" (click)="transition('Resume')">Lanjutkan pekerjaan</button>
+        } @else if (project.status === 'Completed' && isOwner()) {
+          <p>Pekerjaan selesai pada {{ project.actualCompletionDate || 'tanggal belum tersedia' }}. Saldo transaksi masih dapat diselesaikan.</p>@if (balances(); as balance) { @if (balance.receivable > 0 || balance.payable > 0) { <p class="dependency-note" role="status">Piutang atau utang masih tersisa. Completion tetap berlaku; project belum dapat ditutup.</p> } }<div class="lifecycle-actions"><div class="field reason"><label for="reopen-reason">Alasan membuka kembali</label><input id="reopen-reason" formControlName="reason" required></div><div class="row-actions"><button class="button secondary" type="button" [disabled]="busy()" (click)="transition('Reopen')">Buka kembali ke In Progress</button><button class="button primary" type="button" [disabled]="busy() || hasOutstandingBalances()" (click)="closeProject()">Tutup project</button></div></div>
+        } @else if (project.status === 'Closed') { <p>Project Closed bersifat final dan hanya dapat dibaca.</p>
+        } @else if (project.status === 'Cancelled') { <p>Project Cancelled tersedia untuk riwayat; transaksi historis tetap dipertahankan.</p>
+        } @else if (!isOwner()) { <p>Perubahan lifecycle hanya dapat dilakukan oleh OWNER.</p> }
+        @if (isOwner() && ['Draft','Active','InProgress','OnHold'].includes(project.status)) {
+          @if (!showCancellation()) { <button class="button danger" type="button" [disabled]="busy()" (click)="showCancellation.set(true)">Batalkan project</button> }
+          @else {
+            <div class="cancellation-panel">
+              <h4>Batalkan project</h4>
+               <p>Pilih termin yang bukan lagi hak perusahaan. Selesaikan DP teralokasi melalui kesepakatan refund/nominal ditahan sebelum membatalkan project. Referensi kesepakatan wajib; attachment opsional.</p>
+               @if (allocatedReceipts().length) {
+                 <div class="settlement-form" [formGroup]="settlementForm">
+                   <h4>Penyelesaian DP teralokasi</h4>
+                   <div class="form-grid">
+                     <div class="field"><label for="settlement-receipt">Receipt</label><select id="settlement-receipt" formControlName="receiptId"><option value="">Pilih receipt</option>@for (receipt of allocatedReceipts(); track receipt.id) { <option [value]="receipt.id">{{ receipt.reference || receipt.id }} · aktif {{ receipt.allocatedAmount | number:'1.2-2' }}</option> }</select></div>
+                     <div class="field"><label for="settlement-term">Termin</label><select id="settlement-term" formControlName="paymentTermId"><option value="">Pilih termin</option>@for (allocation of settlementAllocations(); track allocation.id) { <option [value]="allocation.paymentTermId">{{ settlementTermName(allocation.paymentTermId) }} · aktif {{ settlementTermAllocation(allocation.paymentTermId) | number:'1.2-2' }}</option> }</select></div>
+                     <div class="field"><label for="settlement-refund">Nominal refund (boleh 0)</label><input id="settlement-refund" type="number" min="0" step="0.01" formControlName="amountRefunded"></div>
+                     <div class="field"><label for="settlement-retained">Nominal ditahan</label><input id="settlement-retained" type="number" min="0" step="0.01" formControlName="amountRetained"></div>
+                     <div class="field"><label for="settlement-date">Tanggal kesepakatan</label><input id="settlement-date" type="date" formControlName="agreementDate"></div>
+                     <div class="field"><label for="settlement-reference">Referensi kesepakatan</label><input id="settlement-reference" formControlName="agreementReference" required></div>
+                     <div class="field"><label for="settlement-reason">Alasan</label><input id="settlement-reason" formControlName="reason" required></div>
+                   </div>
+                   <button class="button secondary" type="button" [disabled]="busy()" (click)="recordCancellationSettlement()">Simpan penyelesaian DP</button>
+                 </div>
+               }
+              @if (cancellableTerms().length) {
+                <div class="term-cancellations">@for (term of cancellableTerms(); track term.id) { <label><input type="checkbox" [checked]="cancelledTermIds().includes(term.id!)" (change)="toggleCancelledTerm(term.id!, $any($event.target).checked)"> {{ term.name }} · {{ term.outstandingAmount | number:'1.2-2' }} IDR belum dialokasikan</label> }</div>
+              } @else { <p class="form-hint">Tidak ada termin tanpa penerimaan yang dapat dipilih.</p> }
+              <div class="field reason" [formGroup]="cancellationForm"><label for="cancel-reason">Alasan pembatalan</label><input id="cancel-reason" formControlName="reason" required></div>
+              <div class="row-actions"><button class="button secondary" type="button" (click)="showCancellation.set(false); cancelledTermIds.set([])">Kembali</button><button class="button danger" type="button" [disabled]="busy()" (click)="cancelProject()">Konfirmasi pembatalan</button></div>
+            </div>
+          }
+        }
+         @if (['Completed','Closed','Cancelled'].includes(project.status)) { <p class="dependency-note">Penutupan memeriksa piutang, utang, penerimaan belum dialokasikan, dan payment balance yang ditujukan ke project ini.</p> }
+        </div>
+      </section></details>
+    </section>
+  }
+</div>

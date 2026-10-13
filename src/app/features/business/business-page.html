@@ -1,0 +1,55 @@
+<div class="business-page">
+  <app-page-header eyebrow="Data referensi" title="Master Data" description="Kelola customer, vendor, dan kategori biaya yang digunakan project.">
+    @if (tab() === 'customers') { <button page-actions class="button primary" type="button" (click)="startCreate('customer')">＋ Customer</button> }
+    @if (tab() === 'vendors') { <button page-actions class="button primary" type="button" (click)="startCreate('vendor')">＋ Vendor</button> }
+    @if (tab() === 'categories') { <div page-actions class="heading-actions"><button class="button primary" type="button" (click)="startCreate('category')">＋ Kategori</button><button class="button secondary" type="button" (click)="startCreate('subcategory')">＋ Subkategori</button></div> }
+  </app-page-header>
+
+  <nav class="tabs" aria-label="Data bisnis">
+    <button type="button" [class.selected]="tab() === 'customers'" (click)="selectTab('customers')">Customer</button>
+    <button type="button" [class.selected]="tab() === 'vendors'" (click)="selectTab('vendors')">Vendor</button>
+    <button type="button" [class.selected]="tab() === 'categories'" (click)="selectTab('categories')">Kategori biaya</button>
+  </nav>
+
+  @if (notice()) { <app-alert tone="success">{{ notice() }}</app-alert> }
+  @if (error()) { <app-alert tone="error">{{ error() }}</app-alert> }
+
+  @if (editing(); as target) {
+    <section class="panel editor" aria-labelledby="editor-title">
+      <div class="section-heading"><div><p class="eyebrow">{{ target.id ? 'Ubah data' : 'Data baru' }}</p><h2 id="editor-title">{{ target.type === 'customer' ? 'Customer' : target.type === 'vendor' ? 'Vendor' : target.type === 'category' ? 'Kategori biaya' : 'Subkategori biaya' }}</h2></div></div>
+      <form [formGroup]="form" (ngSubmit)="save()" novalidate>
+        @if (target.type === 'customer' || target.type === 'vendor') {
+          <div class="form-grid">
+            <div class="field"><label for="master-name">Nama</label><input id="master-name" formControlName="name" required maxlength="200"></div>
+            <div class="field"><label for="master-address">Alamat (opsional)</label><input id="master-address" formControlName="address" maxlength="500"></div>
+            <div class="field"><label for="master-contact">Kontak (opsional)</label><input id="master-contact" formControlName="contact" maxlength="200"></div>
+            <div class="field"><label for="master-identity">Identitas (opsional)</label><input id="master-identity" formControlName="identityNumber" maxlength="100"></div>
+          </div>
+          <p class="form-hint">Nama mirip memberi peringatan; data tetap dapat disimpan.</p>
+        } @else if (target.type === 'category') {
+          <div class="form-grid"><div class="field"><label for="category-name">Nama kategori</label><input id="category-name" formControlName="name" required maxlength="150"></div><div class="field"><label for="category-type">Jenis</label><select id="category-type" formControlName="type" [disabled]="!!target.id"><option value="ProjectExpense">Project expense</option><option value="CompanyOverhead">Company overhead</option></select>@if (target.id) { <small class="form-hint">Jenis kategori tidak dapat diubah setelah dibuat.</small> }</div></div>
+        } @else {
+          <div class="form-grid"><div class="field"><label for="subcategory-category">Kategori</label><select id="subcategory-category" formControlName="categoryId" required><option value="">Pilih kategori aktif</option>@for (category of categories(); track category.id) { @if (category.isActive) { <option [value]="category.id">{{ category.name }} · {{ category.type === 'ProjectExpense' ? 'Project' : 'Overhead' }}</option> } }</select></div><div class="field"><label for="subcategory-name">Nama subkategori</label><input id="subcategory-name" formControlName="name" required maxlength="150"></div></div>
+        }
+        <div class="form-actions"><button class="button secondary" type="button" (click)="cancelEdit()">Batal</button><button class="button primary" type="submit" [disabled]="busy()">{{ busy() ? 'Menyimpan…' : 'Simpan' }}</button></div>
+      </form>
+    </section>
+  }
+
+  <section class="panel data-panel" [attr.aria-busy]="loading()">
+    @if (loading()) { <p class="list-state" role="status">Memuat data…</p> }
+    @else if (tab() === 'customers' || tab() === 'vendors') {
+      @let records = tab() === 'customers' ? customers() : vendors();
+      @if (records.length === 0) { <p class="list-state">Belum ada data.</p> }
+       @else { <div class="table-scroll"><table><caption class="visually-hidden">Daftar {{ tab() === 'customers' ? 'customer' : 'vendor' }}</caption><thead><tr><th>Nama</th><th>Kontak</th><th>Status</th><th>Tindakan</th></tr></thead><tbody>@for (item of records; track item.id) { <tr><td><a [routerLink]="['/sikap/audit/record', tab() === 'customers' ? 'Customer' : 'Vendor', item.id]">{{ item.name }}</a></td><td>{{ item.contact || '—' }}</td><td><app-status-badge [tone]="item.isActive ? 'success' : 'neutral'">{{ item.isActive ? 'Aktif' : 'Nonaktif' }}</app-status-badge></td><td class="row-actions"><button class="button secondary small" type="button" (click)="tab() === 'customers' ? editCustomer(item) : editVendor(item)">Ubah</button><button class="button secondary small" type="button" [disabled]="busy()" (click)="changeActive(tab() === 'customers' ? 'customer' : 'vendor', item)">{{ item.isActive ? 'Nonaktifkan' : 'Aktifkan' }}</button></td></tr> }</tbody></table></div> }
+    } @else {
+      <h2 class="list-title">Kategori</h2>
+      @if (categories().length === 0) { <p class="list-state">Belum ada kategori.</p> }
+       @else { <div class="table-scroll"><table><thead><tr><th>Nama</th><th>Jenis</th><th>Status</th><th>Tindakan</th></tr></thead><tbody>@for (item of categories(); track item.id) { <tr><td><a [routerLink]="['/sikap/audit/record', 'ExpenseCategory', item.id]">{{ item.name }}</a></td><td>{{ item.type === 'ProjectExpense' ? 'Project expense' : 'Company overhead' }}</td><td>{{ item.isActive ? 'Aktif' : 'Nonaktif' }}</td><td class="row-actions"><button class="button secondary small" type="button" (click)="editCategory(item)">Ubah</button><button class="button secondary small" type="button" (click)="changeActive('category', item)">{{ item.isActive ? 'Nonaktifkan' : 'Aktifkan' }}</button></td></tr> }</tbody></table></div> }
+      <h2 class="list-title">Subkategori</h2>
+      @if (subcategories().length === 0) { <p class="list-state">Belum ada subkategori.</p> }
+       @else { <div class="table-scroll"><table><thead><tr><th>Nama</th><th>Kategori</th><th>Status</th><th>Tindakan</th></tr></thead><tbody>@for (item of subcategories(); track item.id) { <tr><td><a [routerLink]="['/sikap/audit/record', 'ExpenseSubcategory', item.id]">{{ item.name }}</a></td><td>{{ categoryName(item.categoryId) }}</td><td>{{ item.isActive ? 'Aktif' : 'Nonaktif' }}</td><td class="row-actions"><button class="button secondary small" type="button" (click)="editSubcategory(item)">Ubah</button><button class="button secondary small" type="button" (click)="changeActive('subcategory', item)">{{ item.isActive ? 'Nonaktifkan' : 'Aktifkan' }}</button></td></tr> }</tbody></table></div> }
+    }
+  </section>
+  <p class="page-note">Master yang telah digunakan tidak dihapus. Nonaktifkan data agar tidak dipilih untuk data baru.</p>
+</div>

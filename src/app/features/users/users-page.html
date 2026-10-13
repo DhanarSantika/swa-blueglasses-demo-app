@@ -1,0 +1,115 @@
+<div class="users-page">
+  <app-page-header eyebrow="Administrasi Identity" [title]="isSuperAdmin() ? 'Pemulihan akun OWNER' : 'Akun internal'" [description]="isSuperAdmin() ? 'Akses terbatas untuk pemulihan akun OWNER. Tidak ada akses transaksi atau dokumen bisnis.' : 'Kelola akun ADMIN_STAFF. Username dan role akun tidak dapat diedit.'">
+    @if (isOwner()) {
+      <button page-actions class="button primary" type="button" (click)="showCreate.set(!showCreate())">
+        {{ showCreate() ? 'Tutup form' : '＋ Buat akun ADMIN_STAFF' }}
+      </button>
+    }
+  </app-page-header>
+
+  @if (notice()) {
+    <app-alert tone="success">{{ notice() }}</app-alert>
+  }
+  @if (errorMessage()) {
+    <app-alert tone="error">{{ errorMessage() }}</app-alert>
+  }
+
+  @if (showCreate() && isOwner()) {
+    <section class="account-form panel" aria-labelledby="create-account-title">
+      <div class="form-heading">
+        <div><p class="eyebrow">Akun operasional</p><h2 id="create-account-title">Buat ADMIN_STAFF</h2></div>
+        <p class="form-explanation">Pengguna wajib mengganti password sementara saat login pertama.</p>
+      </div>
+      <form [formGroup]="createForm" (ngSubmit)="createAccount()" novalidate>
+        <div class="form-grid">
+          <div class="field">
+            <label for="new-username">Username</label>
+            <input id="new-username" formControlName="userName" autocomplete="off" autocapitalize="none" spellcheck="false" required [attr.aria-describedby]="createForm.controls.userName.touched && createForm.controls.userName.invalid ? 'new-username-error' : null" [attr.aria-invalid]="createForm.controls.userName.touched && createForm.controls.userName.invalid ? 'true' : null">
+            @if (createForm.controls.userName.touched && createForm.controls.userName.invalid) {
+              <small id="new-username-error" class="field-error">Username wajib diisi dan harus minimal 3 karakter.</small>
+            }
+          </div>
+          <div class="field">
+            <label for="new-password">Password sementara</label>
+            <input id="new-password" type="password" formControlName="temporaryPassword" autocomplete="new-password" required [attr.aria-describedby]="createForm.controls.temporaryPassword.touched && createForm.controls.temporaryPassword.invalid ? 'new-password-error' : null" [attr.aria-invalid]="createForm.controls.temporaryPassword.touched && createForm.controls.temporaryPassword.invalid ? 'true' : null">
+            @if (passwordError(createForm.controls.temporaryPassword); as error) { <small id="new-password-error" class="field-error">{{ error }}</small> }
+          </div>
+          <div class="field">
+            <label for="confirm-new-password">Ulangi password sementara</label>
+            <input id="confirm-new-password" type="password" formControlName="confirmTemporaryPassword" autocomplete="new-password" required [attr.aria-describedby]="createForm.controls.confirmTemporaryPassword.touched && createForm.controls.confirmTemporaryPassword.invalid ? 'confirm-new-password-error' : null" [attr.aria-invalid]="createForm.controls.confirmTemporaryPassword.touched && createForm.controls.confirmTemporaryPassword.invalid ? 'true' : null">
+            @if (passwordError(createForm.controls.confirmTemporaryPassword); as error) { <small id="confirm-new-password-error" class="field-error">{{ error }}</small> }
+          </div>
+        </div>
+        <div class="form-actions">
+          <button class="button secondary" type="button" (click)="showCreate.set(false)">Batal</button>
+          <button class="button primary" type="submit" [disabled]="isSaving()">{{ isSaving() ? 'Menyimpan…' : 'Buat akun' }}</button>
+        </div>
+      </form>
+    </section>
+  }
+
+  @if (resetTarget(); as target) {
+    <section class="account-form panel reset-panel" aria-labelledby="reset-account-title">
+      <div class="form-heading">
+        <div><p class="eyebrow">Pemulihan akun</p><h2 id="reset-account-title">Reset password · {{ target.userName }}</h2></div>
+        <p class="form-explanation">Sesi lama akan dicabut. Pengguna wajib mengganti password saat login berikutnya.</p>
+      </div>
+      <form [formGroup]="resetForm" (ngSubmit)="resetPassword()" novalidate>
+        <div class="form-grid">
+          <div class="field">
+            <label for="reset-password">Password sementara baru</label>
+            <input id="reset-password" type="password" formControlName="temporaryPassword" autocomplete="new-password" required [attr.aria-describedby]="resetForm.controls.temporaryPassword.touched && resetForm.controls.temporaryPassword.invalid ? 'reset-password-error' : null" [attr.aria-invalid]="resetForm.controls.temporaryPassword.touched && resetForm.controls.temporaryPassword.invalid ? 'true' : null">
+            @if (passwordError(resetForm.controls.temporaryPassword); as error) { <small id="reset-password-error" class="field-error">{{ error }}</small> }
+          </div>
+          <div class="field">
+            <label for="confirm-reset-password">Ulangi password sementara</label>
+            <input id="confirm-reset-password" type="password" formControlName="confirmTemporaryPassword" autocomplete="new-password" required [attr.aria-describedby]="resetForm.controls.confirmTemporaryPassword.touched && resetForm.controls.confirmTemporaryPassword.invalid ? 'confirm-reset-password-error' : null" [attr.aria-invalid]="resetForm.controls.confirmTemporaryPassword.touched && resetForm.controls.confirmTemporaryPassword.invalid ? 'true' : null">
+            @if (passwordError(resetForm.controls.confirmTemporaryPassword); as error) { <small id="confirm-reset-password-error" class="field-error">{{ error }}</small> }
+          </div>
+        </div>
+        <div class="form-actions">
+          <button class="button secondary" type="button" (click)="closePasswordReset()">Batal</button>
+          <button class="button primary" type="submit" [disabled]="isSaving()">{{ isSaving() ? 'Mereset…' : 'Reset password' }}</button>
+        </div>
+      </form>
+    </section>
+  }
+
+  <section class="account-list panel" aria-label="Daftar akun yang dapat dikelola" [attr.aria-busy]="isLoading()">
+    @if (isLoading()) {
+      <p class="list-state" role="status">Memuat akun…</p>
+    } @else if (accounts().length === 0) {
+      <p class="list-state">Belum ada akun pada role yang dapat dikelola.</p>
+    } @else {
+      <div class="table-scroll">
+        <table>
+          <caption class="visually-hidden">Username, role, dan status akun internal</caption>
+          <thead><tr><th scope="col">Username</th><th scope="col">Role</th><th scope="col">Status</th><th scope="col">Password</th><th scope="col">Tindakan</th></tr></thead>
+          <tbody>
+            @for (account of accounts(); track account.id) {
+              <tr>
+                <td class="username-cell">{{ account.userName }}</td>
+                <td><span class="role-chip">{{ account.role }}</span></td>
+                <td><span class="status-chip" [class.active]="account.isActive" [class.inactive]="!account.isActive">{{ account.isActive ? 'Aktif' : 'Nonaktif' }}</span></td>
+                <td>{{ account.mustChangePassword ? 'Wajib diganti' : 'Dikelola pengguna' }}</td>
+                <td class="row-actions">
+                  @if (isOwner()) {
+                    <button class="button secondary small" type="button" [disabled]="isSaving()" (click)="changeStatus(account)">
+                      {{ account.isActive ? 'Nonaktifkan' : 'Aktifkan' }}
+                    </button>
+                  }
+                  <button class="button secondary small" type="button" [disabled]="isSaving()" (click)="openPasswordReset(account)">Reset password</button>
+                  @if (isOwner()) {
+                    <button class="button danger small" type="button" [disabled]="isSaving()" (click)="confirmHardDelete(account)">Hapus permanen</button>
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </section>
+
+  <p class="page-note">Nonaktifkan menghentikan akses dan merevoke token. Hapus permanen menghapus kredensial akun, tetapi tidak menghapus riwayat audit.</p>
+</div>

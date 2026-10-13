@@ -1,0 +1,17 @@
+<div class="reports-page">
+  <app-page-header eyebrow="Analisis dan export" title="Laporan" description="Filter transaksi berdasarkan tanggal kejadian. Saldo outstanding menunjukkan posisi terkini." />
+  <section class="panel report-filters" aria-label="Filter laporan">
+      <label class="field"><span>Jenis laporan</span><select [ngModel]="reportName()" (ngModelChange)="reportName.set($event)"><option *ngFor="let option of options" [value]="option.id" [disabled]="option.ownerOnly && !isOwner()">{{ option.label }}</option></select></label>
+    <label class="field"><span>Project (opsional)</span><select [ngModel]="projectId()" (ngModelChange)="projectId.set($event)"><option value="">Semua project</option><option *ngFor="let project of projects()" [value]="project.id">{{ project.code }} · {{ project.name }}</option></select></label>
+    <label class="field"><span>Dari tanggal</span><input type="date" [ngModel]="from()" (ngModelChange)="from.set($event)"></label>
+    <label class="field"><span>Sampai tanggal</span><input type="date" [ngModel]="to()" (ngModelChange)="to.set($event)"></label>
+    <div class="report-actions"><button class="button primary" type="button" (click)="load()" [disabled]="loading()">{{ loading() ? 'Memuat…' : 'Tampilkan laporan' }}</button><button class="button secondary" type="button" (click)="export()" [disabled]="exporting() || !appliedFilters()">{{ exporting() ? 'Mengekspor…' : 'Export .xlsx' }}</button>@if (filtersDirty()) { <span class="filter-dirty" role="status">Filter berubah. Tampilkan laporan untuk menerapkan.</span> }</div>
+  </section>
+  @if (error()) { <app-alert tone="error">{{ error() }}</app-alert> }
+  @if (result(); as report) {
+     <section class="panel report-results"><div class="section-heading"><div><h2>{{ report.title }}</h2>@if (appliedFilters()?.reportName === 'project-financial-summary') { <p class="form-hint">Ringkasan kondisi finansial tiap proyek, mencakup nilai kontrak, budget, biaya tercatat, penerimaan, piutang, dan estimasi margin.</p> }</div></div>
+        @if (report.rows.length) { <app-table-container label="Hasil laporan"><table><thead><tr>@for (column of columns(); track column) { <th>{{ columnLabel(column) }}</th> }</tr></thead><tbody>@for (row of report.rows; track $index) { <tr>@for (column of columns(); track column) { <td>{{ display(row[column], column) }}</td> }</tr> }</tbody></table></app-table-container> }
+       @else { <app-empty-state message="Tidak ada data untuk filter ini." /> }
+    </section>
+  }
+</div>

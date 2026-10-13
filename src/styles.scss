@@ -1,0 +1,41 @@
+@use './styles/tokens';
+@use './styles/material-theme';
+@import '@fontsource-variable/inter/wght.css';
+
+* { box-sizing: border-box; }
+html, body { min-width: 320px; min-height: 100%; margin: 0; }
+html { font-family: var(--sikap-font-sans); font-synthesis: none; text-rendering: optimizeLegibility; }
+body { min-height: 100vh; background: var(--sikap-canvas); color: var(--sikap-ink); font-family: var(--sikap-font-sans); font-size: 14px; line-height: 1.5; }
+button, input, select, textarea { color: inherit; font: inherit; }
+button, a { -webkit-tap-highlight-color: transparent; }
+input, select, textarea { font-size: 14px; }
+table { font-variant-numeric: tabular-nums; }
+.numeric { font-variant-numeric: tabular-nums; text-align: right; }
+small, .form-hint, .page-note, .scroll-hint, .filter-dirty { font-size: 12px !important; }
+h1 { font-size: clamp(28px, 3vw, 32px) !important; font-weight: 600 !important; letter-spacing: -.03em !important; line-height: 1.2; }
+h2 { font-size: 19px !important; font-weight: 600 !important; line-height: 1.3; }
+h3 { font-size: 16px !important; font-weight: 600 !important; line-height: 1.35; }
+.button { display: inline-flex; min-height: 40px; align-items: center; justify-content: center; gap: 8px; padding: 0 15px; border: 1px solid #bac6cf; border-radius: var(--sikap-radius-sm); background: #fff; color: #344b5d; cursor: pointer; font-family: var(--sikap-font-sans) !important; font-size: 14px !important; font-weight: 600; text-decoration: none; transition: background-color .15s ease, border-color .15s ease, transform .15s ease; }
+.button:hover:not(:disabled) { background: #f1f5f7; }
+.button.primary { border-color: var(--sikap-primary); background: var(--sikap-primary); color: #fff; box-shadow: 0 2px 5px #345f7926; }
+.button.primary:hover:not(:disabled) { transform: translateY(-1px); border-color: #2d536c; background: #2d536c; }
+.button.secondary { border-color: #bac6cf; background: #fff; color: #344b5d; }
+.button.danger { border-color: var(--sikap-danger); background: #fff; color: var(--sikap-danger); }
+.button.danger:hover:not(:disabled) { border-color: var(--sikap-danger); background: #faf0ef; }
+.button.small { min-height: 34px; padding: 0 10px; font-size: 12px !important; }
+.button:disabled { cursor: wait; opacity: .6; }
+.panel { border-radius: var(--sikap-radius-lg); }
+.field input, .field select, .field textarea, .filters input, .filters select, .report-filters input, .report-filters select { font-family: var(--sikap-font-sans) !important; font-size: 14px !important; }
+.button, button.button { font-family: var(--sikap-font-sans) !important; font-size: 14px !important; font-weight: 600; }
+.button.small { min-height: 34px; font-size: 12px !important; }
+.eyebrow, .field label, .field > span, .field span, th, .status-chip, .role-chip, .count-chip { font-size: 12px !important; }
+th { font-size: 13px !important; }
+td, table { font-size: 14px !important; }
+.empty-state, .list-state { font-size: 14px !important; }
+:focus-visible { outline: 3px solid var(--sikap-focus); outline-offset: 3px; }
+button, input, select, textarea { accent-color: var(--sikap-primary); }
+button:disabled { cursor: not-allowed; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; }
+}

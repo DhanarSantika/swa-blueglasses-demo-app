@@ -1,0 +1,19 @@
+@use '@angular/material' as mat;
+
+$sikap-theme: mat.define-theme((
+  color: (
+    theme-type: light,
+    primary: mat.$blue-palette,
+  ),
+  typography: (
+    plain-family: ('Inter Variable', Inter, 'Segoe UI', Arial, sans-serif),
+    brand-family: ('Inter Variable', Inter, 'Segoe UI', Arial, sans-serif),
+    regular-weight: 400,
+    medium-weight: 500,
+    bold-weight: 700,
+  ),
+  density: (scale: 0),
+));
+
+@include mat.core();
+@include mat.all-component-themes($sikap-theme);

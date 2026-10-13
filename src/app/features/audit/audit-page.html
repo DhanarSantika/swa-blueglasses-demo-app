@@ -1,0 +1,36 @@
+<div class="audit-page">
+  <app-page-header eyebrow="Kontrol dan penelusuran" [title]="recordType() ? 'Riwayat ' + recordType() : 'Audit Trail'" description="Waktu ditampilkan dalam WIB. Batas retensi minimum lima tahun." />
+  @if (!recordType()) { <div class="tabs" role="tablist" aria-label="Jenis audit">
+    <button type="button" role="tab" [attr.aria-selected]="tab() === 'business'" (click)="selectTab('business')">Aktivitas Bisnis</button>
+    <button type="button" role="tab" [attr.aria-selected]="tab() === 'identity'" (click)="selectTab('identity')">Akun &amp; Keamanan</button>
+  </div> }
+  <section class="panel filters" aria-label="Filter audit">
+    <label class="field"><span>Dari tanggal (WIB)</span><input type="date" [(ngModel)]="from"></label>
+    <label class="field"><span>Sampai tanggal (WIB)</span><input type="date" [(ngModel)]="to"></label>
+    <label class="field"><span>Actor</span><input type="text" [(ngModel)]="actor" placeholder="Username atau ID"></label>
+    <label class="field"><span>Action</span><input type="text" [(ngModel)]="action" placeholder="UPDATE, VOID, LOGIN…"></label>
+    @if (tab() === 'identity') {
+      <label class="field"><span>Subjek akun</span><input type="text" [(ngModel)]="subject" placeholder="Username akun"></label>
+      <label class="field"><span>Hasil</span><input type="text" [(ngModel)]="outcome" placeholder="SUCCEEDED, FAILED…"></label>
+    }
+    @if (tab() === 'business' && !recordType()) {
+      <label class="field"><span>Jenis record</span><input type="text" [(ngModel)]="entityType" placeholder="Project, ExpenseBill…"></label>
+      <label class="field"><span>Project ID</span><input type="text" [(ngModel)]="projectId" placeholder="UUID project"></label>
+    }
+    <div class="actions"><button class="button primary" type="button" (click)="page.set(1); load()" [disabled]="loading()">{{ loading() ? 'Memuat…' : 'Terapkan filter' }}</button>
+      @if (isOwner() && tab() === 'business' && !recordType()) { <button class="button secondary" type="button" (click)="export()">Export audit</button> }
+    </div>
+  </section>
+  @if (error()) { <app-alert tone="error">{{ error() }}</app-alert> }
+  <section class="panel results" aria-label="Hasil audit">
+    <div class="result-heading"><h2>{{ total() }} event</h2><div class="pagination"><button type="button" class="button secondary" (click)="movePage(-1)" [disabled]="page() <= 1 || loading()">Sebelumnya</button><span>Halaman {{ page() }} dari {{ totalPages() || 1 }}</span><button type="button" class="button secondary" (click)="movePage(1)" [disabled]="page() >= totalPages() || loading()">Berikutnya</button></div></div>
+    @if (events().length) {
+      <app-table-container label="Hasil audit"><table><thead><tr><th>Waktu (WIB)</th><th>Pelaku</th><th>Tindakan</th><th>Record</th><th>Hasil</th><th></th></tr></thead><tbody>
+        @for (event of events(); track eventKey(event)) {
+          <tr><td>{{ event.occurredAtUtc | date:'yyyy-MM-dd HH:mm:ss':'Asia/Jakarta' }}</td><td>{{ actorName(event) }}</td><td>{{ event.action }}</td><td>{{ event.entityType ?? event.subjectUserName ?? '—' }}{{ event.entityId ? ' · ' + event.entityId : '' }}</td><td>{{ event.outcome ?? '—' }}</td><td><button class="text-button" type="button" (click)="toggle(event)" [attr.aria-expanded]="isExpanded(event)">{{ isExpanded(event) ? 'Tutup' : 'Detail' }}</button></td></tr>
+          @if (isExpanded(event)) { <tr class="detail-row"><td colspan="6"><dl><dt>ID pelaku</dt><dd>{{ event.actorId ?? event.id }}</dd><dt>Alasan</dt><dd>{{ event.reason ?? '—' }}</dd><dt>Sebelum</dt><dd><pre>{{ event.oldValue ?? '—' }}</pre></dd><dt>Sesudah / subjek</dt><dd><pre>{{ event.newValue ?? event.subjectUserName ?? '—' }}</pre></dd></dl></td></tr> }
+        }
+      </tbody></table></app-table-container>
+    } @else if (!loading()) { <p class="empty-state">Tidak ada event untuk filter ini.</p> }
+  </section>
+</div>

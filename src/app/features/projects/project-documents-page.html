@@ -1,0 +1,12 @@
+@if (context.project(); as project) {
+  <section class="project-documents" aria-label="Dokumen proyek">
+    <div class="section-heading"><div><p class="eyebrow">File proyek</p><h2>Dokumen proyek</h2></div></div>
+    <app-attachment-panel targetType="Project" [targetId]="project.id" [owner]="isOwner()" [locked]="project.status === 'Closed'" [finalized]="project.status === 'Cancelled'" />
+    @for (settlementId of context.summary()?.settlementIds ?? []; track settlementId) {
+      <section class="settlement-documents" aria-label="Dokumen kesepakatan pembatalan">
+        <h3>Kesepakatan pembatalan</h3>
+        <app-attachment-panel targetType="CancellationSettlement" [targetId]="settlementId" [owner]="isOwner()" [locked]="project.status === 'Closed'" [finalized]="project.status === 'Cancelled'" />
+      </section>
+    }
+  </section>
+}

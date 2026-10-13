@@ -1,0 +1,92 @@
+<a class="skip-link" href="#main-content">Lewati ke konten utama</a>
+
+@if (!isReady()) {
+  <main class="auth-state" aria-live="polite">
+    <span class="brand-mark" aria-hidden="true">S</span>
+    <p>Memeriksa sesi Identity…</p>
+  </main>
+} @else if (!isAuthenticated()) {
+  <main class="auth-state" id="main-content">
+    <section class="auth-card" aria-labelledby="login-title">
+      <span class="brand-mark" aria-hidden="true">S</span>
+      <p class="eyebrow">Workspace internal</p>
+      <h1 id="login-title">Masuk ke SIKAP</h1>
+      <p class="intro-copy">Identity Service menangani username dan kata sandi Anda.</p>
+      @if (loginError()) {
+        <p class="auth-error" role="alert">{{ loginError() }}</p>
+      }
+      <button class="button primary login-button" type="button" (click)="login()">
+        Masuk dengan Identity
+      </button>
+    </section>
+  </main>
+} @else {
+  <div class="shell">
+    <aside class="sidebar" aria-label="Navigasi utama SIKAP">
+        <a class="brand" href="/sikap" aria-label="SIKAP, halaman ringkasan">
+        <span class="brand-mark" aria-hidden="true">S</span>
+        <span><strong>{{ title }}</strong><small>Keuangan project</small></span>
+      </a>
+
+      <p class="nav-label">Workspace</p>
+      @if (isSuperAdmin()) {
+        <nav aria-label="Menu technical support">
+          <a class="nav-item" routerLink="/sikap/users" routerLinkActive="active" ariaCurrentWhenActive="page">Akun dan pemulihan</a>
+          <a class="nav-item" routerLink="/sikap/audit" routerLinkActive="active" ariaCurrentWhenActive="page">Audit Trail</a>
+        </nav>
+      } @else {
+        <nav aria-label="Menu workspace">
+          <a class="nav-item" routerLink="/sikap" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" ariaCurrentWhenActive="page">Ringkasan</a>
+          <a class="nav-item" routerLink="/sikap/projects" routerLinkActive="active" ariaCurrentWhenActive="page">Project</a>
+          <a class="nav-item" routerLink="/sikap/finance/payments" routerLinkActive="active" ariaCurrentWhenActive="page">Pembayaran Tagihan</a>
+          <a class="nav-item" routerLink="/sikap/finance/overhead" routerLinkActive="active" ariaCurrentWhenActive="page">Company Overhead</a>
+          <a class="nav-item" routerLink="/sikap/reports" routerLinkActive="active" ariaCurrentWhenActive="page">Laporan</a>
+          <p class="nav-label nav-section-label">Administrasi</p>
+          <a class="nav-item" routerLink="/sikap/business" routerLinkActive="active" ariaCurrentWhenActive="page">Master Data</a>
+          @if (identity()?.roles?.includes('OWNER')) {
+            <a class="nav-item" routerLink="/sikap/audit" routerLinkActive="active" ariaCurrentWhenActive="page">Audit Trail</a>
+          }
+          @if (identity()?.roles?.includes('OWNER')) {
+            <a class="nav-item" routerLink="/sikap/users" routerLinkActive="active" ariaCurrentWhenActive="page">Akun internal</a>
+          }
+        </nav>
+      }
+
+      <div class="sidebar-footer">
+        <span class="status-dot" aria-hidden="true"></span>
+        <span>DEMO · reset saat refresh</span>
+      </div>
+    </aside>
+
+    <div class="main-column">
+      <header class="topbar">
+        <div class="breadcrumb"><span>SIKAP</span><span aria-hidden="true">/</span><span>{{ currentPage() }}</span></div>
+        <div class="user-session" aria-label="Sesi pengguna" (click)="$event.stopPropagation()">
+          <button class="profile-trigger" type="button" aria-haspopup="menu" [attr.aria-expanded]="isProfileMenuOpen()" (click)="toggleProfileMenu()">
+            <span class="avatar" aria-hidden="true">{{ identity()?.userName?.charAt(0)?.toUpperCase() }}</span>
+            <span class="user-details">
+              <strong>{{ identity()?.userName }}</strong>
+              <span class="role-list" aria-label="Role">
+                @for (role of identity()?.roles ?? []; track role) {
+                  <span class="role-chip">{{ role }}</span>
+                }
+              </span>
+            </span>
+          </button>
+          @if (isProfileMenuOpen()) {
+            <div class="profile-menu" role="menu" aria-label="Menu profil">
+              <a role="menuitem" [href]="identityPasswordUrl" (click)="closeProfileMenu()">Ganti kata sandi</a>
+              <button role="menuitem" type="button" (click)="closeProfileMenu(); logout()" [disabled]="isLoggingOut()">
+                {{ isLoggingOut() ? 'Keluar…' : 'Keluar' }}
+              </button>
+            </div>
+          }
+        </div>
+      </header>
+
+      <main id="main-content" class="content" tabindex="-1">
+        <router-outlet />
+      </main>
+    </div>
+  </div>
+}
